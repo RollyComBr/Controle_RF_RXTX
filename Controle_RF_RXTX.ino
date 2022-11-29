@@ -146,7 +146,7 @@ void loop() {
 }
 
 #if radioID == 0
-  void TX(){
+  void TX(){ //Comandos do transmissor
     botao1.button_loop();
   
     joystick.rx = analogRead(JOYSTICK_RX);
@@ -175,7 +175,7 @@ void loop() {
     radio.write(&joystick, sizeof(joystick));
   }
 #else
-  void RX(){
+  void RX(){ //Comandos do receptor
     if (radio.available()) {
       radio.read(&joystick, sizeof(joystick));
       

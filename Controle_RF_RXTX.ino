@@ -4,7 +4,7 @@
 #include <neotimer.h>
 #include <avr/wdt.h>
 
-#define radioID 1   //Informar "0" para Transmissor e "1" receptor
+#define radioID 0   //Informar "0" para Transmissor e "1" receptor
 #define comentRadio 0 //Exibir comentário no monitor serial
 
 #if radioID == 0
@@ -259,7 +259,6 @@ void loop() {
       
       if (joystick.Quadrado) {
          buzina();
-         Serial.println("Biiiiiiiiiiiiii...");
       } else {
         noTone(PinBuzzer);
         thisNote = 0;

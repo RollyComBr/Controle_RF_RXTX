@@ -3,9 +3,10 @@
 #include <RF24.h>
 #include <neotimer.h>
 #include <avr/wdt.h>
+#include <Wire.h>
 
-#define radioID 0   //Informar "0" para Transmissor e "1" receptor
-#define comentRadio 0 //Exibir comentário no monitor serial
+#define radioID 1   //Informar "0" para Transmissor e "1" receptor
+#define comentRadio 1 //Exibir comentário no monitor serial
 
 #if radioID == 0
   #include <PS2X_lib.h>
@@ -43,20 +44,20 @@ Neotimer timer = Neotimer(500);
   #define PinSetaE        A1
   #define PinSetaD        A2
   
-  //#define PinMotor1Pwm   6
-  #define PinMotorIN1      7
-  #define PinMotorIN2      8
+  //#define PinMotor1Pwm   5
+  #define PinMotorIN1      3
+  #define PinMotorIN2      4
   
-  //#define PinMotor2Pwm   5
-  #define PinMotorIN3      4
-  #define PinMotorIN4      3
+  //#define PinMotor2Pwm   6
+  #define PinMotorIN3      7
+  #define PinMotorIN4      8
 
   Neotimer setaDireita = Neotimer (500);
   Neotimer setaEsquerda = Neotimer (500);
   Neotimer setaAlerta = Neotimer (500);
 
   int SemSinal = 0;
-  int tempoDePisca = 4; //Quando o bit 4 de millis ficar 1 o vaor e HIGH
+  int tempoDePisca = 2; //Quando o bit 4 de millis ficar 1 o vaor e HIGH
 
   int melody[] = {300, 250, 600, 450, 250, 0, 300, 250};
 
@@ -295,7 +296,7 @@ void loop() {
         Direcao = 'U';
       } else if (joystick.LY < -20) {
         Direcao = 'D';
-        joystick.LY = joystick.LY*-1;
+        //joystick.LY = joystick.LY*-1;
       } else {
         Direcao = 'N';
         joystick.LY = 0;

@@ -6,7 +6,7 @@
 #include <Wire.h>
 
 #define radioID 1   //Informar "0" para Transmissor e "1" receptor
-#define comentRadio 1 //Exibir comentário no monitor serial
+#define comentRadio 0 //Exibir comentário no monitor serial
 
 #if radioID == 0
   #include <PS2X_lib.h>
@@ -52,9 +52,9 @@ Neotimer timer = Neotimer(500);
   #define PinMotorIN3      7
   #define PinMotorIN4      8
 
-  Neotimer setaDireita = Neotimer (500);
-  Neotimer setaEsquerda = Neotimer (500);
-  Neotimer setaAlerta = Neotimer (500);
+  Neotimer tempo = Neotimer(2000);
+  int marchaAtual = 1;
+  int velocidadeMotor;
 
   int SemSinal = 0;
   int tempoDePisca = 2; //Quando o bit 4 de millis ficar 1 o vaor e HIGH
@@ -121,10 +121,8 @@ void setup() {
   #else
     pinMode(PinMotorIN1, OUTPUT);
     pinMode(PinMotorIN2, OUTPUT);
-    //pinMode(PinMotor1Pwm, OUTPUT);
     pinMode(PinMotorIN3, OUTPUT);
     pinMode(PinMotorIN4, OUTPUT);
-    //pinMode(PinMotor2Pwm, OUTPUT);
     
     pinMode(PinFarol, OUTPUT);
     pinMode(PinSetaE, OUTPUT);
@@ -138,6 +136,8 @@ void setup() {
     radio.openReadingPipe(0, address);
     radio.setPALevel(RF24_PA_MIN);
     radio.startListening();
+
+    tempo.start();
   #endif
 
   // Inicializando variaveis da struct Meujoystick
@@ -188,6 +188,18 @@ void loop() {
     Serial.print(joystick.Triangulo);
     Serial.print(", Xis: ");
     Serial.print(joystick.Xis);
+    Serial.print(", R1: ");
+    Serial.print(joystick.R1);
+    Serial.print(", R2: ");
+    Serial.print(joystick.R2);
+    Serial.print(", L1: ");
+    Serial.print(joystick.L1);
+    Serial.print(", L2: ");
+    Serial.print(joystick.L2);
+    Serial.print(", Marcha: ");
+    Serial.print(marchaAtual);
+    Serial.print(", VelocidadeMotor: ");
+    Serial.print(velocidadeMotor);
     Serial.print(" Start: ");
     Serial.println(joystick.Start);
   #endif  
@@ -201,6 +213,9 @@ void loop() {
     joystick.RY = retornaZero(map (ps2x.Analog(PSS_LX), 0, 255, -255, 255));
     joystick.LX = retornaZero(map (ps2x.Analog(PSS_RY), 0, 255, 255, -255));
     joystick.LY = retornaZero(map (ps2x.Analog(PSS_RX), 0, 255, -255, 255));
+
+    //NewButtonState = clicar e soltar
+    //ButtonPressed = Muda o estado e mantem. Se tava true, fica false e fica enviando o estado mantido
 
     if(ps2x.ButtonPressed(PSB_START)){
       joystick.Start = !joystick.Start;
@@ -291,6 +306,40 @@ void loop() {
         digitalWrite(PinSetaE,LOW);
       }
 
+      if(tempo.debounce(joystick.R1)){
+        if(marchaAtual <= 4){
+            marchaAtual++;
+          } 
+      }
+
+      if(tempo.debounce(joystick.L1)){
+        if(marchaAtual >= 2){
+            marchaAtual--;
+          } 
+      }
+
+      switch(marchaAtual){
+        case 1:
+        velocidadeMotor = 50;
+        break;
+
+        case 2:
+        velocidadeMotor = 80;
+        break;
+
+        case 3:
+        velocidadeMotor = 140;
+        break;
+
+        case 4:
+        velocidadeMotor = 215;
+        break;
+
+        case 5:
+        velocidadeMotor = 255;
+        break;
+      }
+
       char Direcao;
       if (joystick.LY > 20) {
         Direcao = 'U';
@@ -299,17 +348,15 @@ void loop() {
         //joystick.LY = joystick.LY*-1;
       } else {
         Direcao = 'N';
-        joystick.LY = 0;
+        //joystick.LY = 0;
       }
       
       if (Direcao == 'U') {
-        //analogWrite(PinMotor1Pwm, joystick.LY);
-        digitalWrite(PinMotorIN1, LOW);
-        digitalWrite(PinMotorIN2, HIGH);
+        analogWrite(PinMotorIN1, LOW);
+        analogWrite(PinMotorIN2, velocidadeMotor);
       } else if(Direcao == 'D'){
-        //analogWrite(PinMotor1Pwm, joystick.LY);
-        digitalWrite(PinMotorIN1, HIGH);
-        digitalWrite(PinMotorIN2, LOW);
+        analogWrite(PinMotorIN1, velocidadeMotor);
+        analogWrite(PinMotorIN2, LOW);
       }else{
         digitalWrite(PinMotorIN1, LOW);
         digitalWrite(PinMotorIN2, LOW);
@@ -326,9 +373,9 @@ void loop() {
       
       if(Sentido == 'R'){
         digitalWrite(PinMotorIN3, LOW);
-        digitalWrite(PinMotorIN4, HIGH); 
+        digitalWrite(PinMotorIN4, 90); 
       } else if(Sentido == 'L'){
-        digitalWrite(PinMotorIN3, HIGH);
+        digitalWrite(PinMotorIN3, 90);
         digitalWrite(PinMotorIN4, LOW);
       }else{
         digitalWrite(PinMotorIN3, LOW);

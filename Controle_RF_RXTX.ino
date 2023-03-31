@@ -12,8 +12,8 @@
   #include <PS2X_lib.h>
 #endif
 
-#define PinCE   9 //Amarelo
-#define PinCSN  10 //Verde
+#define PinCE   9 //Pino ao lado do Negativo
+#define PinCSN  10 //Pino ao lado do positivo
 //D11 MOSI
 //D12 MISO
 //D13 SCK
@@ -21,7 +21,7 @@ RF24 radio(PinCE, PinCSN);
 
 Neotimer timer = Neotimer(500);
 
-#if radioID == 0
+#if radioID == 0 //Se estiver no modo Transmissor executa esses dados
   #define PS2_DAT        8  //Fio Marrom   
   #define PS2_CMD        7  //Fio Laranja
   #define PS2_SEL        6  //Fio Amarelo
@@ -38,7 +38,7 @@ Neotimer timer = Neotimer(500);
       return mapa;
     }
   }
-#else
+#else //Se estiver no modo Receptor executa esses dados
   #define PinBuzzer       A3
   #define PinFarol        A4
   #define PinSetaE        A1
@@ -108,7 +108,7 @@ void setup() {
     Serial.begin(9600);
   #endif
   wdt_enable(WDTO_4S);
-  #if radioID == 0
+  #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
     ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, false, false);
        
     radio.begin();
@@ -118,7 +118,7 @@ void setup() {
     radio.openWritingPipe(address);
     radio.setPALevel(RF24_PA_MAX);
     radio.stopListening();
-  #else
+  #else //Se estiver no modo Receptor executa esses dados
     pinMode(PinMotorIN1, OUTPUT);
     pinMode(PinMotorIN2, OUTPUT);
     pinMode(PinMotorIN3, OUTPUT);
@@ -134,7 +134,7 @@ void setup() {
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
     radio.openReadingPipe(0, address);
-    radio.setPALevel(RF24_PA_MIN);
+    radio.setPALevel(RF24_PA_MAX);
     radio.startListening();
 
     //tempo.start();
@@ -208,7 +208,7 @@ void loop() {
     Serial.print(joystick.L2);
     Serial.print(", L3: ");
     Serial.print(joystick.L3);
-    #if radioID == 1
+    #if radioID == 1 //Se estiver no modo Receptor executa esses dados
     Serial.print(", Marcha: ");
     Serial.print(marchaAtual);
     Serial.print(", VelocidadeMotor: ");
@@ -221,7 +221,7 @@ void loop() {
   #endif  
 }
 
-#if radioID == 0
+#if radioID == 0 //Se estiver no modo Transmissor executa esses dados
   void dispositivo_TX(){
     ps2x.read_gamepad(false, false);
     
@@ -284,7 +284,7 @@ void loop() {
     
     radio.write(&joystick, sizeof(joystick));
   }
-#else
+#else //Se estiver no modo Receptor executa esses dados
   void dispositivo_RX(){
     if (radio.available()) {
       radio.read(&joystick, sizeof(joystick));

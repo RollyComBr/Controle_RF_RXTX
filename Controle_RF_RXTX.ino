@@ -44,15 +44,13 @@ Neotimer timer = Neotimer(500);
   #define PinSetaE        A1
   #define PinSetaD        A2
   
-  //#define PinMotor1Pwm   5
-  #define PinMotorIN1      3
-  #define PinMotorIN2      4
+  #define PinMotorIN1      5
+  #define PinMotorIN2      6
   
-  //#define PinMotor2Pwm   6
-  #define PinMotorIN3      7
-  #define PinMotorIN4      8
+  #define PinMotorIN3      3
+  #define PinMotorIN4      4
 
-  Neotimer tempo = Neotimer(2000);
+  Neotimer tempo = Neotimer(1000);
   int marchaAtual = 1;
   int velocidadeMotor;
 
@@ -106,7 +104,9 @@ typedef struct Meujoystick  {
 MeuJoystick joystick;
 
 void setup() {
-  Serial.begin(9600);
+  #if comentRadio == 1
+    Serial.begin(9600);
+  #endif
   wdt_enable(WDTO_4S);
   #if radioID == 0
     ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, false, false);
@@ -116,7 +116,7 @@ void setup() {
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
     radio.openWritingPipe(address);
-    radio.setPALevel(RF24_PA_MIN);
+    radio.setPALevel(RF24_PA_MAX);
     radio.stopListening();
   #else
     pinMode(PinMotorIN1, OUTPUT);
@@ -137,7 +137,7 @@ void setup() {
     radio.setPALevel(RF24_PA_MIN);
     radio.startListening();
 
-    tempo.start();
+    //tempo.start();
   #endif
 
   // Inicializando variaveis da struct Meujoystick
@@ -180,6 +180,14 @@ void loop() {
     Serial.print(joystick.RX);
     Serial.print(", RY: ");
     Serial.print(joystick.RY);
+    Serial.print(", Cima: ");
+    Serial.print(joystick.Cima);
+    Serial.print(", Baixo: ");
+    Serial.print(joystick.Baixo);
+    Serial.print(", Esquerda: ");
+    Serial.print(joystick.Esquerda);
+    Serial.print(", Direita: ");
+    Serial.print(joystick.Direita);
     Serial.print(", Quadrado: ");
     Serial.print(joystick.Quadrado);
     Serial.print(", Bolinha: ");
@@ -192,14 +200,22 @@ void loop() {
     Serial.print(joystick.R1);
     Serial.print(", R2: ");
     Serial.print(joystick.R2);
+    Serial.print(", R3: ");
+    Serial.print(joystick.R3);
     Serial.print(", L1: ");
     Serial.print(joystick.L1);
     Serial.print(", L2: ");
     Serial.print(joystick.L2);
+    Serial.print(", L3: ");
+    Serial.print(joystick.L3);
+    #if radioID == 1
     Serial.print(", Marcha: ");
     Serial.print(marchaAtual);
     Serial.print(", VelocidadeMotor: ");
     Serial.print(velocidadeMotor);
+    #endif 
+    Serial.print(", Select: ");
+    Serial.print(joystick.Select);
     Serial.print(" Start: ");
     Serial.println(joystick.Start);
   #endif  
@@ -209,10 +225,10 @@ void loop() {
   void dispositivo_TX(){
     ps2x.read_gamepad(false, false);
     
-    joystick.RX = retornaZero(map (ps2x.Analog(PSS_LY), 0, 255, 255, -255));
-    joystick.RY = retornaZero(map (ps2x.Analog(PSS_LX), 0, 255, -255, 255));
-    joystick.LX = retornaZero(map (ps2x.Analog(PSS_RY), 0, 255, 255, -255));
-    joystick.LY = retornaZero(map (ps2x.Analog(PSS_RX), 0, 255, -255, 255));
+    joystick.LY = retornaZero(map (ps2x.Analog(PSS_LY), 0, 255, 255, -255));
+    joystick.LX = retornaZero(map (ps2x.Analog(PSS_LX), 0, 255, -255, 255));
+    joystick.RY = retornaZero(map (ps2x.Analog(PSS_RY), 0, 255, 255, -255));
+    joystick.RX = retornaZero(map (ps2x.Analog(PSS_RX), 0, 255, -255, 255));
 
     //NewButtonState = clicar e soltar
     //ButtonPressed = Muda o estado e mantem. Se tava true, fica false e fica enviando o estado mantido
@@ -305,90 +321,69 @@ void loop() {
       }else{
         digitalWrite(PinSetaE,LOW);
       }
-
-      if(tempo.debounce(joystick.R1)){
+      
+      if(joystick.R1){
         if(marchaAtual <= 4){
             marchaAtual++;
           } 
       }
 
-      if(tempo.debounce(joystick.L1)){
+      if(joystick.L1){
         if(marchaAtual >= 2){
             marchaAtual--;
           } 
       }
-
+      
       switch(marchaAtual){
         case 1:
-        velocidadeMotor = 50;
+        velocidadeMotor = 150;
         break;
 
         case 2:
-        velocidadeMotor = 80;
+        velocidadeMotor = 200;
         break;
 
         case 3:
-        velocidadeMotor = 140;
-        break;
-
-        case 4:
-        velocidadeMotor = 215;
-        break;
-
-        case 5:
         velocidadeMotor = 255;
         break;
       }
 
-      char Direcao;
-      if (joystick.LY > 20) {
-        Direcao = 'U';
-      } else if (joystick.LY < -20) {
-        Direcao = 'D';
-        //joystick.LY = joystick.LY*-1;
-      } else {
-        Direcao = 'N';
-        //joystick.LY = 0;
-      }
-      
-      if (Direcao == 'U') {
-        analogWrite(PinMotorIN1, LOW);
-        analogWrite(PinMotorIN2, velocidadeMotor);
-      } else if(Direcao == 'D'){
+      //DIREÇÃO
+      if (joystick.LY > 20) { //FRENTE
         analogWrite(PinMotorIN1, velocidadeMotor);
         analogWrite(PinMotorIN2, LOW);
+      } else if(joystick.LY < -20){ //RÉ
+        analogWrite(PinMotorIN1, LOW);
+        analogWrite(PinMotorIN2, velocidadeMotor);
       }else{
         digitalWrite(PinMotorIN1, LOW);
         digitalWrite(PinMotorIN2, LOW);
       }
 
-      char Sentido;
-      if (joystick.RX > 20) {
-        Sentido = 'L';
-      } else if (joystick.RX < -20) {
-        Sentido = 'R';
-      } else {
-        Sentido = 'N';
-      }
-      
-      if(Sentido == 'R'){
+      //SENTIDO
+      if(joystick.RX > 20){ //DIREITA
         digitalWrite(PinMotorIN3, LOW);
-        digitalWrite(PinMotorIN4, 90); 
-      } else if(Sentido == 'L'){
-        digitalWrite(PinMotorIN3, 90);
+        digitalWrite(PinMotorIN4, 100); 
+      } else if(joystick.RX < -20){ //ESQUERDA
+        digitalWrite(PinMotorIN3, 100);
         digitalWrite(PinMotorIN4, LOW);
       }else{
         digitalWrite(PinMotorIN3, LOW);
         digitalWrite(PinMotorIN4, LOW);
       }
+      
       timer.repeatReset();
       SemSinal=0;
     }else{
       if(timer.repeat()){
         SemSinal++;
         if(SemSinal >= 3){
-          Serial.println("Sem Sinal");
+          #if comentRadio == 1
+            Serial.println("Sem Sinal");
+          #endif
           //Desliga o motor
+          digitalWrite(PinMotorIN1, LOW);
+          digitalWrite(PinMotorIN2, LOW);
           digitalWrite(PinMotorIN3, LOW);
           digitalWrite(PinMotorIN4, LOW);
           //Pisca alerta ativa

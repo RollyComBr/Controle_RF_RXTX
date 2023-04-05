@@ -1,19 +1,13 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#include <neotimer.h>
-#include <avr/wdt.h>
 #include <Wire.h>
 
 #define radioID 0   //Informar "0" para Transmissor e "1" receptor
-#define comentRadio 0 //Exibir comentário no monitor serial
-#define comentReceptor 0 //Exibir comentários dos estado dos botões no receptor
+#define comentRadio 1 //Exibir comentário no monitor serial
 
 #if radioID == 0
   #include <PS2X_lib.h>
-#else
-  #include <Servo.h>
-  Servo myservo;
 #endif
 
 #define PinCE   9 //Pino ao lado do Negativo
@@ -23,7 +17,7 @@
 //D13 SCK
 RF24 radio(PinCE, PinCSN);
 
-Neotimer timer = Neotimer(500);
+unsigned long tempoOff;
 
 #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
   #define PS2_DAT        8  //Fio Marrom   
@@ -34,6 +28,7 @@ Neotimer timer = Neotimer(500);
   //Preto GND
 
   PS2X ps2x;
+  #define PinMotorVibro 2
 
   int retornaZero(int mapa){
     if(mapa > -15 && mapa < 15){
@@ -47,17 +42,13 @@ Neotimer timer = Neotimer(500);
   #define PinFarol        A4
   #define PinSetaE        A1
   #define PinSetaD        A2
+  #define PinLed           2
   
   #define PinMotorIN1      5
   #define PinMotorIN2      6
   
   #define PinMotorIN3      3
   #define PinMotorIN4      4
-
-  #define PinServo         8
-
-  int posicaoInicialServo = 90;
-  int servoposicao = posicaoInicialServo; 
 
   int marchaAtual = 1;
   int velocidadeMotor;
@@ -125,40 +116,60 @@ Neotimer timer = Neotimer(500);
     unsigned long  Select = millis();
   } LastTimeButtonTime;
   LastTimeButtonTime lastTimeButtonTime;
+
+  typedef struct SelectAtivado  {
+    bool  R1;
+    bool  R2;
+    bool  R3;
+    bool  L1;
+    bool  L2;
+    bool  L3;
+    bool  Cima;
+    bool  Baixo;
+    bool  Esquerda;
+    bool  Direita;
+    bool  Quadrado;
+    bool  Triangulo;
+    bool  Bolinha;
+    bool  Xis;
+    bool  Start;
+  } SelectAtivado;
+  SelectAtivado selectAtivado;
 #endif
 
 const byte address[6] = "00001";
 
 typedef struct Meujoystick  {
-  bool  R1;
-  bool  R2;
-  bool  R3;
-  int   RY;
-  int   RX;
-  bool  L1;
-  bool  L2;
-  bool  L3;
-  int   LY;
-  int   LX;
-  bool  Cima;
-  bool  Baixo;
-  bool  Esquerda;
-  bool  Direita;
-  bool  Quadrado;
-  bool  Triangulo;
-  bool  Bolinha;
-  bool  Xis;
-  bool  Start;
-  bool  Select;
+  bool  R1 = false;
+  bool  R2 = false;
+  bool  R3 = false;
+  int   RY = 0;
+  int   RX = 0;
+  bool  L1 = false;
+  bool  L2 = false;
+  bool  L3 = false;
+  int   LY = 0;
+  int   LX = 0;
+  bool  Cima = false;
+  bool  Baixo = false;
+  bool  Esquerda = false;
+  bool  Direita = false;
+  bool  Quadrado = false;
+  bool  Triangulo = false;
+  bool  Bolinha = false;
+  bool  Xis = false;
+  bool  Start = false;
+  bool  Select = false;
 } MeuJoystick;
 MeuJoystick joystick;
 
 void setup() {
-  #if comentRadio == 1 || comentReceptor ==1
-    Serial.begin(9600);
+  #if comentRadio == 1
+    //Serial.begin(9600);
   #endif
-  wdt_enable(WDTO_4S);
+
   #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
+    pinMode(PinMotorVibro, OUTPUT);
     ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, false, false);
        
     radio.begin();
@@ -178,6 +189,8 @@ void setup() {
     pinMode(PinSetaE, OUTPUT);
     pinMode(PinSetaD, OUTPUT);
     pinMode(PinBuzzer, OUTPUT);
+    pinMode(PinLed, OUTPUT);
+    digitalWrite(PinLed,HIGH);
     
     radio.begin();
     radio.setAutoAck(false);
@@ -186,35 +199,10 @@ void setup() {
     radio.openReadingPipe(0, address);
     radio.setPALevel(RF24_PA_MAX);
     radio.startListening();
-
-    myservo.attach(PinServo);
   #endif
-
-  // Inicializando variaveis da struct Meujoystick
-  joystick.R1        = false;
-  joystick.R2        = false;
-  joystick.R3        = false;
-  joystick.RY        = 0;
-  joystick.RX        = 0;
-  joystick.L1        = false;
-  joystick.L2        = false;
-  joystick.L3        = false;
-  joystick.LY        = 0;
-  joystick.LX        = 0;
-  joystick.Cima      = false;
-  joystick.Baixo     = false;
-  joystick.Esquerda  = false;
-  joystick.Direita   = false;
-  joystick.Quadrado  = false;
-  joystick.Triangulo = false;
-  joystick.Bolinha   = false;
-  joystick.Xis       = false;
-  joystick.Start     = false;
-  joystick.Select    = false;
 }
 
 void loop() {
-  wdt_reset();
   #if radioID == 0
     dispositivo_TX();
   #else
@@ -259,49 +247,15 @@ void loop() {
     Serial.print(", L3: ");
     Serial.print(joystick.L3);
     #if radioID == 1 //Se estiver no modo Receptor executa esses dados
-    Serial.print(", Marcha: ");
-    Serial.print(marchaAtual);
-    Serial.print(", VelocidadeMotor: ");
-    Serial.print(velocidadeMotor);
+      Serial.print(", Marcha: ");
+      Serial.print(marchaAtual);
+      Serial.print(", VelocidadeMotor: ");
+      Serial.print(velocidadeMotor);
     #endif 
     Serial.print(", Select: ");
     Serial.print(joystick.Select);
     Serial.print(" Start: ");
     Serial.println(joystick.Start);
-  #endif
-
-  #if comentReceptor == 1
-    
-    Serial.print("Baixo: ");
-    Serial.print(estadoBotao.Baixo);
-    Serial.print(", Esquerda: ");
-    Serial.print(estadoBotao.Esquerda);
-    Serial.print(", Direita: ");
-    Serial.print(estadoBotao.Direita);
-    Serial.print(", Quadrado: ");
-    Serial.print(estadoBotao.Quadrado);
-    Serial.print(", Bolinha: ");
-    Serial.print(estadoBotao.Bolinha);
-    Serial.print(", Triangulo: ");
-    Serial.print(estadoBotao.Triangulo);
-    Serial.print(", Xis: ");
-    Serial.print(estadoBotao.Xis);
-    Serial.print(", R1: ");
-    Serial.print(estadoBotao.R1);
-    Serial.print(", R2: ");
-    Serial.print(estadoBotao.R2);
-    Serial.print(", R3: ");
-    Serial.print(estadoBotao.R3);
-    Serial.print(", L1: ");
-    Serial.print(estadoBotao.L1);
-    Serial.print(", L2: ");
-    Serial.print(estadoBotao.L2);
-    Serial.print(", L3: ");
-    Serial.print(estadoBotao.L3);
-    Serial.print(", Select: ");
-    Serial.print(estadoBotao.Select);
-    Serial.print(" Start: ");
-    Serial.println(estadoBotao.Start);
   #endif
 }
 
@@ -365,6 +319,12 @@ void loop() {
     if(ps2x.NewButtonState(PSB_L3)){
       joystick.L3 = !joystick.L3;
     }
+
+    if(joystick.Select){
+      digitalWrite(PinMotorVibro,HIGH);
+    }else{
+      digitalWrite(PinMotorVibro,LOW);
+    }
     
     radio.write(&joystick, sizeof(joystick));
   }
@@ -372,150 +332,152 @@ void loop() {
   void dispositivo_RX(){
     if (radio.available()) {
       radio.read(&joystick, sizeof(joystick));
-      
-      if (joystick.Quadrado) {
-        estadoBotao.Quadrado= !estadoBotao.Quadrado;
-         buzina();
-      } else {
-        noTone(PinBuzzer);
-        thisNote = 0;
-      }
 
-      if(joystick.Triangulo){
+      if(joystick.Select){
         if(millis() - lastTimeButtonTime.Triangulo >= debounceBotao){
           lastTimeButtonTime.Triangulo = millis();
-          estadoBotao.Triangulo= !estadoBotao.Triangulo;
+          estadoBotao.Select= !estadoBotao.Select;
         }
       }
-      if(estadoBotao.Triangulo){
-        digitalWrite(PinSetaD,!bitRead(millis(), tempoDePisca));
-        digitalWrite(PinSetaE,!bitRead(millis(), tempoDePisca));
-      }else{
-        digitalWrite(PinSetaE,LOW);
-        digitalWrite(PinSetaD,LOW);
-      }
-
-      //Se aoertar Bolinha uma vez muda o status do botao
-      if(joystick.Bolinha){
-        if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
-          lastTimeButtonTime.Bolinha = millis();
-          estadoBotao.Bolinha= !estadoBotao.Bolinha;
-        }
-      }
-      if(estadoBotao.Bolinha){
-        digitalWrite(PinFarol,HIGH);
-      }else{
-        digitalWrite(PinFarol,LOW);
-      }
-
-      if(joystick.R2){
-        if(millis() - lastTimeButtonTime.R2 >= debounceBotao){
-          lastTimeButtonTime.R2 = millis();
-          estadoBotao.R2= !estadoBotao.R2;
-        }
-      }
-      if(estadoBotao.R2){
-        digitalWrite(PinSetaD,!bitRead(millis(), tempoDePisca));
-      }else{
-        digitalWrite(PinSetaD,LOW);
-      }
-
-      if(joystick.L2){
-        if(millis() - lastTimeButtonTime.L2 >= debounceBotao){
-          lastTimeButtonTime.L2 = millis();
-          estadoBotao.L2= !estadoBotao.L2;
-        }
-      }
-      if(estadoBotao.L2){
-        digitalWrite(PinSetaE,!bitRead(millis(), tempoDePisca));
-      }else{
-        digitalWrite(PinSetaE,LOW);
-      }
+      if(!estadoBotao.Select){ //Quando SELECT está desativado executa funções comum do carrinho
       
-      if(joystick.R1){
-        if(millis() - lastTimeButtonTime.R1 >= debounceBotao){
-          lastTimeButtonTime.R1 = millis();
-          if(marchaAtual <= 4){
-            marchaAtual++;
-          } 
+        if (joystick.Quadrado) {
+          buzina();
+        } else {
+          noTone(PinBuzzer);
+          thisNote = 0;
+        }
+
+        if(joystick.Triangulo){
+          if(millis() - lastTimeButtonTime.Triangulo >= debounceBotao){
+            lastTimeButtonTime.Triangulo = millis();
+            estadoBotao.Triangulo= !estadoBotao.Triangulo;
+          }
+        }
+        if(estadoBotao.Triangulo){
+          digitalWrite(PinSetaD,!bitRead(millis(), tempoDePisca));
+          digitalWrite(PinSetaE,!bitRead(millis(), tempoDePisca));
+        }else{
+          digitalWrite(PinSetaE,LOW);
+          digitalWrite(PinSetaD,LOW);
+        }
+
+        //Se aoertar Bolinha uma vez muda o status do botao
+        if(joystick.Bolinha){
+          if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
+            lastTimeButtonTime.Bolinha = millis();
+            estadoBotao.Bolinha= !estadoBotao.Bolinha;
+          }
+        }
+        if(estadoBotao.Bolinha){
+          digitalWrite(PinFarol,HIGH);
+        }else{
+          digitalWrite(PinFarol,LOW);
+        }
+
+        if(joystick.R2){
+          if(millis() - lastTimeButtonTime.R2 >= debounceBotao){
+            lastTimeButtonTime.R2 = millis();
+            estadoBotao.R2= !estadoBotao.R2;
+          }
+        }
+        if(estadoBotao.R2){
+          digitalWrite(PinSetaD,!bitRead(millis(), tempoDePisca));
+        }else{
+          digitalWrite(PinSetaD,LOW);
+        }
+
+        if(joystick.L2){
+          if(millis() - lastTimeButtonTime.L2 >= debounceBotao){
+            lastTimeButtonTime.L2 = millis();
+            estadoBotao.L2= !estadoBotao.L2;
+          }
+        }
+        if(estadoBotao.L2){
+          digitalWrite(PinSetaE,!bitRead(millis(), tempoDePisca));
+        }else{
+          digitalWrite(PinSetaE,LOW);
+        }
+        
+        if(joystick.R1){
+          if(millis() - lastTimeButtonTime.R1 >= debounceBotao){
+            lastTimeButtonTime.R1 = millis();
+            if(marchaAtual <= 4){
+              marchaAtual++;
+            } 
+          }
+        }
+
+        if(joystick.L1){
+          if(millis() - lastTimeButtonTime.L1 >= debounceBotao){
+            lastTimeButtonTime.L1 = millis();
+            if(marchaAtual >= 2){
+              marchaAtual--;
+            } 
+          }
+        }
+        
+        switch(marchaAtual){
+          case 1:
+          velocidadeMotor = 100;
+          break;
+
+          case 2:
+          velocidadeMotor = 130;
+          break;
+
+          case 3:
+          velocidadeMotor = 170;
+          break;
+
+          case 4:
+          velocidadeMotor = 225;
+          break;
+
+          case 5:
+          velocidadeMotor = 255;
+          break;
+        }
+
+        //DIREÇÃO
+        if (joystick.LY > 20) { //FRENTE
+          analogWrite(PinMotorIN1, velocidadeMotor);
+          analogWrite(PinMotorIN2, LOW);
+        } else if(joystick.LY < -20){ //RÉ
+          analogWrite(PinMotorIN1, LOW);
+          analogWrite(PinMotorIN2, velocidadeMotor);
+        }else{
+          digitalWrite(PinMotorIN1, LOW);
+          digitalWrite(PinMotorIN2, LOW);
+        }
+
+        //SENTIDO
+        if(joystick.RX > 20){ //DIREITA
+          digitalWrite(PinMotorIN3, LOW);
+          digitalWrite(PinMotorIN4, 100); 
+        } else if(joystick.RX < -20){ //ESQUERDA
+          digitalWrite(PinMotorIN3, 100);
+          digitalWrite(PinMotorIN4, LOW);
+        }else{
+          digitalWrite(PinMotorIN3, LOW);
+          digitalWrite(PinMotorIN4, LOW);
+        }
+        SemSinal=0;
+      }else{ //Se SELECT estiver ativado
+        if(joystick.Bolinha){
+          if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
+            lastTimeButtonTime.Bolinha = millis();
+            selectAtivado.Bolinha= !selectAtivado.Bolinha;
+          }
+        }
+        if(selectAtivado.Bolinha){
+          digitalWrite(PinLed,LOW);
+        }else{
+          digitalWrite(PinLed,HIGH);
         }
       }
-
-      if(joystick.L1){
-        if(millis() - lastTimeButtonTime.L1 >= debounceBotao){
-          lastTimeButtonTime.L1 = millis();
-          if(marchaAtual >= 2){
-            marchaAtual--;
-          } 
-        }
-      }
-      
-      switch(marchaAtual){
-        case 1:
-        velocidadeMotor = 150;
-        break;
-
-        case 2:
-        velocidadeMotor = 200;
-        break;
-
-        case 3:
-        velocidadeMotor = 255;
-        break;
-      }
-
-      //DIREÇÃO
-      if (joystick.LY > 20) { //FRENTE
-        analogWrite(PinMotorIN1, velocidadeMotor);
-        analogWrite(PinMotorIN2, LOW);
-      } else if(joystick.LY < -20){ //RÉ
-        analogWrite(PinMotorIN1, LOW);
-        analogWrite(PinMotorIN2, velocidadeMotor);
-      }else{
-        digitalWrite(PinMotorIN1, LOW);
-        digitalWrite(PinMotorIN2, LOW);
-      }
-
-      //SENTIDO
-      if(joystick.RX > 20){ //DIREITA
-        digitalWrite(PinMotorIN3, LOW);
-        digitalWrite(PinMotorIN4, 100); 
-      } else if(joystick.RX < -20){ //ESQUERDA
-        digitalWrite(PinMotorIN3, 100);
-        digitalWrite(PinMotorIN4, LOW);
-      }else{
-        digitalWrite(PinMotorIN3, LOW);
-        digitalWrite(PinMotorIN4, LOW);
-      }
-
-      //DIREÇÃO SERVO
-      if (joystick.Esquerda) { //FRENTE
-        estadoBotao.Esquerda= !estadoBotao.Esquerda;
-        estadoBotao.Direita= false;
-      } else if(joystick.Direita){ //RÉ
-        estadoBotao.Direita= !estadoBotao.Direita;
-        estadoBotao.Esquerda= false;
-      }else if (joystick.L3){
-        servoposicao = posicaoInicialServo;
-        myservo.write(servoposicao);
-      }
-
-      if(estadoBotao.Esquerda){
-        if(servoposicao > 0){
-          servoposicao = servoposicao-1;
-          myservo.write(servoposicao);
-        }
-      }else if(estadoBotao.Direita){
-        if(servoposicao < 180){
-          servoposicao = servoposicao+1;
-          myservo.write(servoposicao);
-        }
-      }
-      
-      timer.repeatReset();
-      SemSinal=0;
     }else{
-      if(timer.repeat()){
+      if(millis() - tempoOff >= 500){
         SemSinal++;
         if(SemSinal >= 3){
           #if comentRadio == 1

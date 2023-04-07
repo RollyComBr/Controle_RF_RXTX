@@ -177,7 +177,7 @@ void setup() {
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
     radio.openWritingPipe(address);
-    radio.setPALevel(RF24_PA_MAX);
+    radio.setPALevel(RF24_PA_HIGH);
     radio.stopListening();
   #else //Se estiver no modo Receptor executa esses dados
     pinMode(PinMotorIN1, OUTPUT);
@@ -197,7 +197,7 @@ void setup() {
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
     radio.openReadingPipe(0, address);
-    radio.setPALevel(RF24_PA_MAX);
+    radio.setPALevel(RF24_PA_LOW);
     radio.startListening();
   #endif
 }

@@ -4,11 +4,12 @@
 #include <RF24.h>
 #include <Wire.h>
 
-#define radioID 0   //Informar "0" para Transmissor e "1" receptor
+#define radioID 1   //Informar "0" para Transmissor e "1" receptor
 #define comentRadio 0 //Exibir comentário no monitor serial
 
 #if radioID == 0
   #include <PS2X_lib.h>
+  #include <MicroLCD.h>
 #endif
 
 #define PinCE   9 //Pino ao lado do Negativo
@@ -29,6 +30,7 @@ unsigned long tempoOff;
   //Preto GND
 
   PS2X ps2x;
+  LCD_SSD1306 lcd;
   #define PinMotorVibro 2
 
   int retornaZero(int mapa){
@@ -51,7 +53,6 @@ unsigned long tempoOff;
   #define PinMotorIN3      3
   #define PinMotorIN4      4
 
-  int marchaAtual = 1;
   int velocidadeMotor;
 
   int SemSinal = 0;
@@ -78,6 +79,8 @@ unsigned long tempoOff;
     }
   }
 
+#endif
+
   typedef struct EstadoBotao  {
     bool  R1;
     bool  R2;
@@ -95,6 +98,7 @@ unsigned long tempoOff;
     bool  Xis;
     bool  Start;
     bool  Select;
+    int marchaAtual = 1;
   } EstadoBotao;
   EstadoBotao estadoBotao;
 
@@ -136,9 +140,8 @@ unsigned long tempoOff;
     bool  Start;
   } SelectAtivado;
   SelectAtivado selectAtivado;
-#endif
 
-const byte address[6] = "00001";
+const byte address[][6] = {"00001", "00002"};
 
 typedef struct Meujoystick  {
   bool  R1 = false;
@@ -170,6 +173,7 @@ void setup() {
   #endif
 
   #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
+    lcd.begin();
     pinMode(PinMotorVibro, OUTPUT);
     ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, false, false);
        
@@ -177,9 +181,10 @@ void setup() {
     radio.setAutoAck(false);
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
-    radio.openWritingPipe(address);
+    radio.openWritingPipe(address[0]);
+    radio.openReadingPipe(1, address[1]);
     radio.setPALevel(RF24_PA_HIGH);
-    radio.stopListening();
+    radio.startListening();
   #else //Se estiver no modo Receptor executa esses dados
     pinMode(PinMotorIN1, OUTPUT);
     pinMode(PinMotorIN2, OUTPUT);
@@ -197,7 +202,8 @@ void setup() {
     radio.setAutoAck(false);
     radio.setChannel(100);
     radio.setDataRate(RF24_250KBPS);
-    radio.openReadingPipe(0, address);
+    radio.openWritingPipe(address[1]);
+    radio.openReadingPipe(1, address[0]);
     radio.setPALevel(RF24_PA_LOW);
     radio.startListening();
   #endif
@@ -248,7 +254,7 @@ void loop() {
   Serial.print(joystick.L3);
   #if radioID == 1 //Se estiver no modo Receptor executa esses dados
     Serial.print(", Marcha: ");
-    Serial.print(marchaAtual);
+    Serial.print(estadoBotao.marchaAtual);
     Serial.print(", VelocidadeMotor: ");
     Serial.print(velocidadeMotor);
   #endif 
@@ -256,12 +262,13 @@ void loop() {
   Serial.print(joystick.Select);
   Serial.print(" Start: ");
   Serial.println(joystick.Start);
+  
 }
 
 #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
   void dispositivo_TX(){
     ps2x.read_gamepad(false, false);
-    
+
     joystick.LY = retornaZero(map (ps2x.Analog(PSS_LY), 0, 255, 255, -255));
     joystick.LX = retornaZero(map (ps2x.Analog(PSS_LX), 0, 255, -255, 255));
     joystick.RY = retornaZero(map (ps2x.Analog(PSS_RY), 0, 255, 255, -255));
@@ -275,6 +282,7 @@ void loop() {
     }
     if(ps2x.NewButtonState(PSB_SELECT)){
       joystick.Select = !joystick.Select;
+      //lcd.clear();
     }
     if(ps2x.NewButtonState(PSB_PAD_UP)){
       joystick.Cima = !joystick.Cima;
@@ -326,12 +334,30 @@ void loop() {
       digitalWrite(PinMotorVibro,LOW);
     }
     
+    radio.stopListening();
     radio.write(&joystick, sizeof(joystick));
+    radio.startListening();
+    if (radio.available()) {
+      radio.read(&estadoBotao, sizeof(estadoBotao));
+    }
+
+
+    lcd.setCursor(0, 0);
+    lcd.setFontSize(FONT_SIZE_SMALL);
+    String txtSelect = "Select: ";
+    txtSelect += estadoBotao.Select?"ON ":"OFF";
+    lcd.println(txtSelect);
+    String txtMarcha = "Marcha: ";
+    txtMarcha += estadoBotao.marchaAtual;
+    lcd.println(txtMarcha);
+    
   }
 #else //Se estiver no modo Receptor executa esses dados
   void dispositivo_RX(){
     if (radio.available()) {
       radio.read(&joystick, sizeof(joystick));
+
+      
 
       if(joystick.Select){
         if(millis() - lastTimeButtonTime.Triangulo >= debounceBotao){
@@ -402,8 +428,8 @@ void loop() {
         if(joystick.R1){
           if(millis() - lastTimeButtonTime.R1 >= debounceBotao){
             lastTimeButtonTime.R1 = millis();
-            if(marchaAtual <= 4){
-              marchaAtual++;
+            if(estadoBotao.marchaAtual <= 4){
+              estadoBotao.marchaAtual++;
             } 
           }
         }
@@ -411,13 +437,13 @@ void loop() {
         if(joystick.L1){
           if(millis() - lastTimeButtonTime.L1 >= debounceBotao){
             lastTimeButtonTime.L1 = millis();
-            if(marchaAtual >= 2){
-              marchaAtual--;
+            if(estadoBotao.marchaAtual >= 2){
+              estadoBotao.marchaAtual--;
             } 
           }
         }
         
-        switch(marchaAtual){
+        switch(estadoBotao.marchaAtual){
           case 1:
           velocidadeMotor = 100;
           break;
@@ -439,7 +465,6 @@ void loop() {
           break;
         }
 
-        
       }else{ //Se SELECT estiver ativado
         if(joystick.Bolinha){
           if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
@@ -479,6 +504,10 @@ void loop() {
         digitalWrite(PinMotorIN4, LOW);
       }
       SemSinal=0;
+
+      radio.stopListening();
+      radio.write(&estadoBotao, sizeof(estadoBotao));
+      radio.startListening();
     }else{
       if(millis() - tempoOff >= 500){
         SemSinal++;

@@ -1,10 +1,11 @@
+#include <Arduino.h>
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <Wire.h>
 
 #define radioID 0   //Informar "0" para Transmissor e "1" receptor
-#define comentRadio 1 //Exibir comentário no monitor serial
+#define comentRadio 0 //Exibir comentário no monitor serial
 
 #if radioID == 0
   #include <PS2X_lib.h>
@@ -165,7 +166,7 @@ MeuJoystick joystick;
 
 void setup() {
   #if comentRadio == 1
-    //Serial.begin(9600);
+    Serial.begin(57600);
   #endif
 
   #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
@@ -209,54 +210,52 @@ void loop() {
     dispositivo_RX();
   #endif
 
-  #if comentRadio == 1
-    Serial.print("LX: ");
-    Serial.print(joystick.LX);
-    Serial.print(", LY: ");
-    Serial.print(joystick.LY);
-    Serial.print(", RX: ");
-    Serial.print(joystick.RX);
-    Serial.print(", RY: ");
-    Serial.print(joystick.RY);
-    Serial.print(", Cima: ");
-    Serial.print(joystick.Cima);
-    Serial.print(", Baixo: ");
-    Serial.print(joystick.Baixo);
-    Serial.print(", Esquerda: ");
-    Serial.print(joystick.Esquerda);
-    Serial.print(", Direita: ");
-    Serial.print(joystick.Direita);
-    Serial.print(", Quadrado: ");
-    Serial.print(joystick.Quadrado);
-    Serial.print(", Bolinha: ");
-    Serial.print(joystick.Bolinha);
-    Serial.print(", Triangulo: ");
-    Serial.print(joystick.Triangulo);
-    Serial.print(", Xis: ");
-    Serial.print(joystick.Xis);
-    Serial.print(", R1: ");
-    Serial.print(joystick.R1);
-    Serial.print(", R2: ");
-    Serial.print(joystick.R2);
-    Serial.print(", R3: ");
-    Serial.print(joystick.R3);
-    Serial.print(", L1: ");
-    Serial.print(joystick.L1);
-    Serial.print(", L2: ");
-    Serial.print(joystick.L2);
-    Serial.print(", L3: ");
-    Serial.print(joystick.L3);
-    #if radioID == 1 //Se estiver no modo Receptor executa esses dados
-      Serial.print(", Marcha: ");
-      Serial.print(marchaAtual);
-      Serial.print(", VelocidadeMotor: ");
-      Serial.print(velocidadeMotor);
-    #endif 
-    Serial.print(", Select: ");
-    Serial.print(joystick.Select);
-    Serial.print(" Start: ");
-    Serial.println(joystick.Start);
-  #endif
+  Serial.print("LX: ");
+  Serial.print(joystick.LX);
+  Serial.print(", LY: ");
+  Serial.print(joystick.LY);
+  Serial.print(", RX: ");
+  Serial.print(joystick.RX);
+  Serial.print(", RY: ");
+  Serial.print(joystick.RY);
+  Serial.print(", Cima: ");
+  Serial.print(joystick.Cima);
+  Serial.print(", Baixo: ");
+  Serial.print(joystick.Baixo);
+  Serial.print(", Esquerda: ");
+  Serial.print(joystick.Esquerda);
+  Serial.print(", Direita: ");
+  Serial.print(joystick.Direita);
+  Serial.print(", Quadrado: ");
+  Serial.print(joystick.Quadrado);
+  Serial.print(", Bolinha: ");
+  Serial.print(joystick.Bolinha);
+  Serial.print(", Triangulo: ");
+  Serial.print(joystick.Triangulo);
+  Serial.print(", Xis: ");
+  Serial.print(joystick.Xis);
+  Serial.print(", R1: ");
+  Serial.print(joystick.R1);
+  Serial.print(", R2: ");
+  Serial.print(joystick.R2);
+  Serial.print(", R3: ");
+  Serial.print(joystick.R3);
+  Serial.print(", L1: ");
+  Serial.print(joystick.L1);
+  Serial.print(", L2: ");
+  Serial.print(joystick.L2);
+  Serial.print(", L3: ");
+  Serial.print(joystick.L3);
+  #if radioID == 1 //Se estiver no modo Receptor executa esses dados
+    Serial.print(", Marcha: ");
+    Serial.print(marchaAtual);
+    Serial.print(", VelocidadeMotor: ");
+    Serial.print(velocidadeMotor);
+  #endif 
+  Serial.print(", Select: ");
+  Serial.print(joystick.Select);
+  Serial.print(" Start: ");
+  Serial.println(joystick.Start);
 }
 
 #if radioID == 0 //Se estiver no modo Transmissor executa esses dados
@@ -320,6 +319,7 @@ void loop() {
       joystick.L3 = !joystick.L3;
     }
 
+    //Motorzinho de celular ligado ao Pino 2 para dar feedback ao usuário ao entrar no modo SELECT
     if(joystick.Select){
       digitalWrite(PinMotorVibro,HIGH);
     }else{
@@ -339,8 +339,8 @@ void loop() {
           estadoBotao.Select= !estadoBotao.Select;
         }
       }
+      //Funções do MODO SELECT
       if(!estadoBotao.Select){ //Quando SELECT está desativado executa funções comum do carrinho
-      
         if (joystick.Quadrado) {
           buzina();
         } else {
@@ -362,7 +362,7 @@ void loop() {
           digitalWrite(PinSetaD,LOW);
         }
 
-        //Se aoertar Bolinha uma vez muda o status do botao
+        //Se apertar Bolinha uma vez muda o status do botao
         if(joystick.Bolinha){
           if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
             lastTimeButtonTime.Bolinha = millis();
@@ -439,30 +439,7 @@ void loop() {
           break;
         }
 
-        //DIREÇÃO
-        if (joystick.LY > 20) { //FRENTE
-          analogWrite(PinMotorIN1, velocidadeMotor);
-          analogWrite(PinMotorIN2, LOW);
-        } else if(joystick.LY < -20){ //RÉ
-          analogWrite(PinMotorIN1, LOW);
-          analogWrite(PinMotorIN2, velocidadeMotor);
-        }else{
-          digitalWrite(PinMotorIN1, LOW);
-          digitalWrite(PinMotorIN2, LOW);
-        }
-
-        //SENTIDO
-        if(joystick.RX > 20){ //DIREITA
-          digitalWrite(PinMotorIN3, LOW);
-          digitalWrite(PinMotorIN4, 100); 
-        } else if(joystick.RX < -20){ //ESQUERDA
-          digitalWrite(PinMotorIN3, 100);
-          digitalWrite(PinMotorIN4, LOW);
-        }else{
-          digitalWrite(PinMotorIN3, LOW);
-          digitalWrite(PinMotorIN4, LOW);
-        }
-        SemSinal=0;
+        
       }else{ //Se SELECT estiver ativado
         if(joystick.Bolinha){
           if(millis() - lastTimeButtonTime.Bolinha >= debounceBotao){
@@ -476,13 +453,37 @@ void loop() {
           digitalWrite(PinLed,HIGH);
         }
       }
+
+      //Mesmo com o SELECT ativo o Analógico continua funcionando LX, LY, RX e RY
+      //DIREÇÃO
+      if (joystick.LY > 20) { //FRENTE
+        analogWrite(PinMotorIN1, velocidadeMotor);
+        analogWrite(PinMotorIN2, LOW);
+      } else if(joystick.LY < -20){ //RÉ
+        analogWrite(PinMotorIN1, LOW);
+        analogWrite(PinMotorIN2, velocidadeMotor);
+      }else{
+        digitalWrite(PinMotorIN1, LOW);
+        digitalWrite(PinMotorIN2, LOW);
+      }
+
+      //SENTIDO
+      if(joystick.RX > 20){ //DIREITA
+        digitalWrite(PinMotorIN3, LOW);
+        digitalWrite(PinMotorIN4, 100); 
+      } else if(joystick.RX < -20){ //ESQUERDA
+        digitalWrite(PinMotorIN3, 100);
+        digitalWrite(PinMotorIN4, LOW);
+      }else{
+        digitalWrite(PinMotorIN3, LOW);
+        digitalWrite(PinMotorIN4, LOW);
+      }
+      SemSinal=0;
     }else{
       if(millis() - tempoOff >= 500){
         SemSinal++;
         if(SemSinal >= 3){
-          #if comentRadio == 1
-            Serial.println("Sem Sinal");
-          #endif
+          Serial.println("Sem Sinal");
           //Desliga o motor
           digitalWrite(PinMotorIN1, LOW);
           digitalWrite(PinMotorIN2, LOW);

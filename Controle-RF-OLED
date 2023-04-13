@@ -42,21 +42,21 @@ unsigned long tempoOff;
   }
 #else //Se estiver no modo Receptor executa esses dados
   #define PinBuzzer       A3
-  #define PinFarol        A4
+  #define PinFarol        7
   #define PinSetaE        A1
   #define PinSetaD        A2
   #define PinLed           2
   
-  #define PinMotorIN1      5
-  #define PinMotorIN2      6
+  #define PinMotorIN1      6
+  #define PinMotorIN2      5
   
-  #define PinMotorIN3      3
-  #define PinMotorIN4      4
+  #define PinMotorIN3      4 
+  #define PinMotorIN4      3
 
   int velocidadeMotor;
 
   int SemSinal = 0;
-  int tempoDePisca = 2; //Quando o bit 4 de millis ficar 1 o vaor e HIGH
+  int tempoDePisca = 8; //Quando o bit 4 de millis ficar 1 o vaor e HIGH
 
   int melody[] = {300, 250, 600, 450, 250, 0, 300, 250};
 
@@ -518,10 +518,6 @@ void loop() {
           digitalWrite(PinMotorIN2, LOW);
           digitalWrite(PinMotorIN3, LOW);
           digitalWrite(PinMotorIN4, LOW);
-          //Pisca alerta ativa
-          digitalWrite(PinSetaE,!bitRead(millis(), tempoDePisca));
-          digitalWrite(PinSetaD,!bitRead(millis(), tempoDePisca));
-          digitalWrite(PinFarol, bitRead(millis(), tempoDePisca));
         }
       }
     }

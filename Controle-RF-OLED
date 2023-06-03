@@ -59,6 +59,7 @@ int retornaZero(int mapa) {
 #define PinMotorIN4 3
 
 int velocidadeMotor;
+int marchaAtual = 1;
 int SemSinal = 0;
 int tempoDePisca = 8;  //Quando o bit 4 de millis ficar 1 o vaor e HIGH
 int melody[] = { 300, 250, 600, 450, 250, 0, 300, 250 };
@@ -97,7 +98,6 @@ typedef struct TrocaDeDados {
   bool Xis = false;
   bool Start = false;
   bool Select = false;
-  int marchaAtual = 1;
 } TrocaDeDados;
 TrocaDeDados trocaDeDados;
 
@@ -252,9 +252,7 @@ void loop() {
   Serial.print(joystick.L3);
 #if radioID == 1  //Se estiver no modo Receptor executa esses dados
   Serial.print(", Marcha: ");
-  Serial.print(trocaDeDados.marchaAtual);
-  Serial.print(", VelocidadeMotor: ");
-  Serial.print(velocidadeMotor);
+  Serial.print(marchaAtual);
 #endif
   Serial.print(" Start: ");
   Serial.println(joystick.Start);
@@ -335,7 +333,7 @@ void dispositivo_TX() {
   //Motorzinho de celular ligado ao Pino 2 para dar feedback ao usuário ao entrar no modo SELECT     
   if (statusSelect) {
     if (ps2x.NewButtonState(PSB_R1)) {
-      if (millis() - lastTimeButtonTime.R1 >= debounceBotao) {
+      if (millis() - lastTimeButtonTime.R1 >= 300) {
         lastTimeButtonTime.R1 = millis();
         if (canal <= 127) {
           canal++;
@@ -347,7 +345,7 @@ void dispositivo_TX() {
       radio.setChannel(EEPROM.read(150));
     }
     if (ps2x.NewButtonState(PSB_L1)) {
-      if (millis() - lastTimeButtonTime.L1 >= debounceBotao) {
+      if (millis() - lastTimeButtonTime.L1 >= 300) {
         lastTimeButtonTime.L1 = millis();
         if (canal >= 1) {
           canal--;
@@ -372,9 +370,6 @@ void dispositivo_TX() {
   String txtSelect = "Select: ";
   txtSelect += statusSelect ? "ON " : "OFF";
   lcd.println(txtSelect);
-  String txtMarcha = "Marcha: ";
-  txtMarcha += trocaDeDados.marchaAtual;
-  lcd.println(txtMarcha);
   
   String zerar = "";  
   if(canal<100 && canal>=10){
@@ -455,8 +450,8 @@ void dispositivo_RX() {
       if (joystick.R1) {
         if (millis() - lastTimeButtonTime.R1 >= debounceBotao) {
           lastTimeButtonTime.R1 = millis();
-          if (trocaDeDados.marchaAtual <= 4) {
-            trocaDeDados.marchaAtual++;
+          if (marchaAtual <= 4) {
+            marchaAtual++;
           }
         }
       }
@@ -464,13 +459,13 @@ void dispositivo_RX() {
       if (joystick.L1) {
         if (millis() - lastTimeButtonTime.L1 >= debounceBotao) {
           lastTimeButtonTime.L1 = millis();
-          if (trocaDeDados.marchaAtual >= 2) {
-            trocaDeDados.marchaAtual--;
+          if (marchaAtual >= 2) {
+            marchaAtual--;
           }
         }
       }
 
-      switch (trocaDeDados.marchaAtual) {
+      switch (marchaAtual) {
         case 1:
           velocidadeMotor = 100;
           break;
@@ -487,6 +482,7 @@ void dispositivo_RX() {
           velocidadeMotor = 255;
           break;
       }
+
     } else {  //Se SELECT estiver ativado
       if (joystick.Bolinha) {
         if (millis() - lastTimeButtonTime.Bolinha >= debounceBotao) {

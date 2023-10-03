@@ -501,9 +501,9 @@ void dispositivo_RX() {
     //DIREÇÃO
     if (joystick.LY > 20) {  //FRENTE
       analogWrite(PinMotorIN1, velocidadeMotor);
-      analogWrite(PinMotorIN2, LOW);
+      digitalWrite(PinMotorIN2, LOW);
     } else if (joystick.LY < -20) {  //RÉ
-      analogWrite(PinMotorIN1, LOW);
+      digitalWrite(PinMotorIN1, LOW);
       analogWrite(PinMotorIN2, velocidadeMotor);
     } else {
       digitalWrite(PinMotorIN1, LOW);
@@ -513,9 +513,9 @@ void dispositivo_RX() {
     //SENTIDO
     if (joystick.RX > 20) {  //DIREITA
       digitalWrite(PinMotorIN3, LOW);
-      digitalWrite(PinMotorIN4, 100);
+      analogWrite(PinMotorIN4, 100);
     } else if (joystick.RX < -20) {  //ESQUERDA
-      digitalWrite(PinMotorIN3, 100);
+      analogWrite(PinMotorIN3, 100);
       digitalWrite(PinMotorIN4, LOW);
     } else {
       digitalWrite(PinMotorIN3, LOW);

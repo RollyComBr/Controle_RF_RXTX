@@ -6,7 +6,7 @@
 #include <EEPROM.h>
 #include <avr/wdt.h>
 
-#define radioID 0      //Informar "0" para Transmissor e "1" receptor
+#define radioID 1      //Informar "0" para Transmissor e "1" receptor
 #define comentRadio 1  //Exibir comentário no monitor serial
 #define CanalReceptor 100 //Define o canal do dispositivo receptor
 
@@ -100,7 +100,7 @@ SelectAtivado selectAtivado;
 
 #endif
 
-typedef struct TrocaDeDados {
+typedef struct MeuReceptor {
   bool R1 = false;
   bool R2 = false; //Seta direita
   bool R3 = false;
@@ -118,8 +118,8 @@ typedef struct TrocaDeDados {
   bool Start = false;
   bool Select = false;
   int MarchaAtual = 1;
-} TrocaDeDados;
-TrocaDeDados trocaDeDados;
+} MeuReceptor;
+MeuReceptor receptor;
 
 typedef struct LastTimeButtonTime {
   unsigned long R1 = millis();
@@ -256,7 +256,7 @@ void loop() {
   Serial.print(joystick.L3);
 #if radioID == 1  //Se estiver no modo Receptor executa esses dados
   Serial.print(", Marcha: ");
-  Serial.print(marchaAtual);
+  Serial.print(receptor.MarchaAtual);
 #endif
   Serial.print(" Start: ");
   Serial.print(joystick.Start);
@@ -361,13 +361,12 @@ void dispositivo_TX() {
       radio.setChannel(EEPROM.read(150));
     }
   }
-  joystick.Select = !bitRead(millis(), 8);
 
   radio.stopListening();
   radio.write(&joystick, sizeof(joystick));
   radio.startListening();
   if (radio.available()) {
-    radio.read(&trocaDeDados, sizeof(trocaDeDados));
+    radio.read(&receptor, sizeof(receptor));
   }
 
   lcd.setCursor(0, 0);
@@ -404,10 +403,10 @@ void dispositivo_RX() {
       if (joystick.Triangulo) {
         if (millis() - lastTimeButtonTime.Triangulo >= debounceBotao) {
           lastTimeButtonTime.Triangulo = millis();
-          trocaDeDados.Triangulo = !trocaDeDados.Triangulo;
+          receptor.Triangulo = !receptor.Triangulo;
         }
       }
-      if (trocaDeDados.Triangulo) {
+      if (receptor.Triangulo) {
         digitalWrite(PinSetaD, !bitRead(millis(), tempoDePisca));
         digitalWrite(PinSetaE, !bitRead(millis(), tempoDePisca));
       } else {
@@ -419,10 +418,10 @@ void dispositivo_RX() {
       if (joystick.Bolinha) {
         if (millis() - lastTimeButtonTime.Bolinha >= debounceBotao) {
           lastTimeButtonTime.Bolinha = millis();
-          trocaDeDados.Bolinha = !trocaDeDados.Bolinha;
+          receptor.Bolinha = !receptor.Bolinha;
         }
       }
-      if (trocaDeDados.Bolinha) {
+      if (receptor.Bolinha) {
         digitalWrite(PinFarol, HIGH);
       } else {
         digitalWrite(PinFarol, LOW);
@@ -431,10 +430,10 @@ void dispositivo_RX() {
       if (joystick.R2) {
         if (millis() - lastTimeButtonTime.R2 >= debounceBotao) {
           lastTimeButtonTime.R2 = millis();
-          trocaDeDados.R2 = !trocaDeDados.R2;
+          receptor.R2 = !receptor.R2;
         }
       }
-      if (trocaDeDados.R2) {
+      if (receptor.R2) {
         digitalWrite(PinSetaD, !bitRead(millis(), tempoDePisca));
       } else {
         digitalWrite(PinSetaD, LOW);
@@ -443,10 +442,10 @@ void dispositivo_RX() {
       if (joystick.L2) {
         if (millis() - lastTimeButtonTime.L2 >= debounceBotao) {
           lastTimeButtonTime.L2 = millis();
-          trocaDeDados.L2 = !trocaDeDados.L2;
+          receptor.L2 = !receptor.L2;
         }
       }
-      if (trocaDeDados.L2) {
+      if (receptor.L2) {
         digitalWrite(PinSetaE, !bitRead(millis(), tempoDePisca));
       } else {
         digitalWrite(PinSetaE, LOW);
@@ -459,6 +458,7 @@ void dispositivo_RX() {
             marchaAtual++;
           }
         }
+        receptor.MarchaAtual = marchaAtual;
       }
 
       if (joystick.L1) {
@@ -468,8 +468,9 @@ void dispositivo_RX() {
             marchaAtual--;
           }
         }
+        receptor.MarchaAtual = marchaAtual;
       }
-      trocaDeDados.MarchaAtual = marchaAtual;
+      
       switch (marchaAtual) {
         case 1:
           velocidadeMotor = 135;
@@ -504,10 +505,11 @@ void dispositivo_RX() {
 
     //Mesmo com o SELECT ativo o Analógico continua funcionando LX, LY, RX e RY
     //DIREÇÃO
-    if (joystick.LY > 20) {  //FRENTE
+    int PontoMorto = 100; //Ponto morto do controle. Se o valor recebido for maior que PontoMorto, o motor aciona.
+    if (joystick.LY > PontoMorto) {  //FRENTE
       analogWrite(PinMotorIN1, velocidadeMotor);
       digitalWrite(PinMotorIN2, LOW);
-    } else if (joystick.LY < -20) { //RÉ
+    } else if (joystick.LY < -PontoMorto) { //RÉ
       digitalWrite(PinMotorIN1, LOW);
       analogWrite(PinMotorIN2, velocidadeMotor);
     } else {
@@ -516,10 +518,10 @@ void dispositivo_RX() {
     }
 
     //SENTIDO
-    if (joystick.RX > 20) {  //DIREITA
+    if (joystick.RX > PontoMorto) {  //DIREITA
       digitalWrite(PinMotorIN3, LOW);
       analogWrite(PinMotorIN4, 150);
-    } else if (joystick.RX < -20) {  //ESQUERDA
+    } else if (joystick.RX < -PontoMorto) {  //ESQUERDA
       analogWrite(PinMotorIN3, 150);
       digitalWrite(PinMotorIN4, LOW);
     } else {
@@ -529,7 +531,7 @@ void dispositivo_RX() {
     SemSinal = 0;
 
     radio.stopListening(); //Para de ler
-    radio.write(&trocaDeDados, sizeof(trocaDeDados)); //Envia os dados
+    radio.write(&receptor, sizeof(receptor)); //Envia os dados
     radio.startListening(); //Volta a ler
   } else {
     if (millis() - tempoOff >= 500) {

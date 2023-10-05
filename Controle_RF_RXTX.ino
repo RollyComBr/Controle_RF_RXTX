@@ -66,18 +66,18 @@ int SemSinal = 0;
 int tempoDePisca = 8;  //Quando o bit 4 de millis ficar 1 o vaor e HIGH
 int melody[] = { 300, 250, 600, 450, 250, 0, 300, 250 };
 int noteDurations[] = { 4, 8, 8, 4, 4, 4, 4, 4 };
-unsigned long previousMillis = 0;
-unsigned long pauseBetweenNotes;
-int thisNote;
+unsigned long millisBuzina = 0;
+unsigned long pausaEntreNotas;
+int notaAtual;
 
 void buzina() {
   unsigned long currentMillis = millis();
-  if (thisNote < 8 && currentMillis - previousMillis >= pauseBetweenNotes) {
-    previousMillis = currentMillis;
-    int noteDuration = 1000 / noteDurations[thisNote];
-    tone(PinBuzzer, melody[thisNote], noteDuration);
-    pauseBetweenNotes = noteDuration * 1.30;
-    thisNote++;
+  if (notaAtual < sizeof(melody) && currentMillis - millisBuzina >= pausaEntreNotas) {
+    millisBuzina = currentMillis;
+    int noteDuration = 1000 / noteDurations[notaAtual];
+    tone(PinBuzzer, melody[notaAtual], noteDuration);
+    pausaEntreNotas = noteDuration * 1.30;
+    notaAtual++;
   }
 }
 
@@ -254,10 +254,8 @@ void loop() {
   Serial.print(joystick.L2);
   Serial.print(", L3: ");
   Serial.print(joystick.L3);
-#if radioID == 1  //Se estiver no modo Receptor executa esses dados
   Serial.print(", Marcha: ");
   Serial.print(receptor.MarchaAtual);
-#endif
   Serial.print(" Start: ");
   Serial.print(joystick.Start);
   Serial.print(" Select Ativado: ");
@@ -386,6 +384,10 @@ void dispositivo_TX() {
   String txtCanal = "Canal: "+zerar;
   txtCanal += canal;
   lcd.println(txtCanal);
+
+  String txtMarcha = "Marcha: ";
+  txtMarcha += receptor.MarchaAtual;
+  lcd.println(txtMarcha);
 }
 #else  //Se estiver no modo Receptor executa esses dados
 void dispositivo_RX() {
@@ -397,7 +399,7 @@ void dispositivo_RX() {
         buzina();
       } else {
         noTone(PinBuzzer);
-        thisNote = 0;
+        notaAtual = 0;
       }
 
       if (joystick.Triangulo) {

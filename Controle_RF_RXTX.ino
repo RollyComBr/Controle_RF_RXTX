@@ -26,7 +26,6 @@ unsigned long tempoOff;
 int debounceBotao = 500;
 unsigned long LastTimeVibra = millis();
 int canal = EEPROM.read(150);
-bool statusSelect = false;
 
 #if radioID == 0   //Se estiver no modo Transmissor executa esses dados
 #define PS2_DAT 8  //Fio Marrom
@@ -370,7 +369,7 @@ void dispositivo_TX() {
   lcd.setCursor(0, 0);
   lcd.setFontSize(FONT_SIZE_SMALL);
   String txtSelect = "Select: ";
-  txtSelect += statusSelect ? "ON " : "OFF";
+  txtSelect += joystick.Select ? "ON " : "OFF";
   lcd.println(txtSelect);
   
   String zerar = "";  

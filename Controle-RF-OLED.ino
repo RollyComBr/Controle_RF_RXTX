@@ -99,45 +99,10 @@ SelectAtivado selectAtivado;
 
 //Funções do PCF8574
 #define qtdeCi  1
-byte enderecosPCF8574[qtdeCi] = {32}; 
-bool ciPinMode(byte pino, int modo) {
-  static byte modoPinos[qtdeCi];
-  if (modo == -1) {
-     return bitRead(modoPinos[pino / 8], pino % 8); 
-  } else {
-     bitWrite(modoPinos[pino / 8], (pino % 8), modo);
-     return modo;
-  }
-}
-void ciWrite(byte pino, bool estado) {
-  static bool inicio = true;
-  static byte estadoPin[qtdeCi];
-    if (inicio) {
-       byte estadoCI;
-       for (int nL = 0; nL < qtdeCi; nL++) {
-
-           for (int nM = 0; nM < 8; nM++) {
-               bitWrite(estadoCI, nM, !ciPinMode(nM + (nL * 8)) );  
-           }
-           estadoPin[nL] = estadoCI;
-       }
-       inicio = false;
-    }
-    bitWrite(estadoPin[pino / 8], pino % 8, estado);
-    Wire.beginTransmission(enderecosPCF8574[pino / 8]);    
-    Wire.write(estadoPin[pino / 8]);                            
-    Wire.endTransmission();        
-}
-bool ciRead(byte pino) {
-  byte lido;
-  bool estado;
-   Wire.requestFrom(enderecosPCF8574[pino / 8], 1);
-   if(Wire.available()) {   
-      lido = Wire.read();        
-   }
-   estado = bitRead(lido, pino % 8);
-   return estado;  
-}
+int enderecosPCF8574[qtdeCi] = {32}; 
+bool ciPinMode(byte pino, int modo = -1);
+void ciWrite(byte pino, bool estado);
+bool ciRead(int pino);
 #endif
 
 typedef struct MeuReceptor {
@@ -227,6 +192,7 @@ void setup() {
   radio.setPALevel(RF24_PA_HIGH);
   radio.startListening();
 #else  //Se estiver no modo Receptor executa esses dados
+  Wire.begin();
   pinMode(PinMotorIN1, OUTPUT);
   pinMode(PinMotorIN2, OUTPUT);
   pinMode(PinMotorIN3, OUTPUT);
@@ -548,6 +514,18 @@ void dispositivo_RX() {
       } else {
         digitalWrite(PinLed, HIGH);
       }
+
+      if (joystick.Triangulo) {
+        if (millis() - lastTimeButtonTime.Triangulo >= debounceBotao) {
+          lastTimeButtonTime.Triangulo = millis();
+          selectAtivado.Triangulo = !selectAtivado.Triangulo;
+        }
+      }
+      if (selectAtivado.Triangulo) {
+        ciWrite(1, LOW);
+      } else {
+        ciWrite(1, HIGH);
+      }
     }
 
     //Mesmo com o SELECT ativo o Analógico continua funcionando LX, LY, RX e RY
@@ -593,5 +571,45 @@ void dispositivo_RX() {
       }
     }
   }
+}
+
+//Funções do PCF8574
+bool ciPinMode(byte pino, int modo) {
+  static byte modoPinos[qtdeCi];
+  if (modo == -1) {
+     return bitRead(modoPinos[pino / 8], pino % 8); 
+  } else {
+     bitWrite(modoPinos[pino / 8], (pino % 8), modo);
+     return modo;
+  }
+}
+void ciWrite(byte pino, bool estado) {
+  static bool inicio = true;
+  static byte estadoPin[qtdeCi];
+    if (inicio) {
+       byte estadoCI;
+       for (int nL = 0; nL < qtdeCi; nL++) {
+
+           for (int nM = 0; nM < 8; nM++) {
+               bitWrite(estadoCI, nM, !ciPinMode(nM + (nL * 8)) );  
+           }
+           estadoPin[nL] = estadoCI;
+       }
+       inicio = false;
+    }
+    bitWrite(estadoPin[pino / 8], pino % 8, estado);
+    Wire.beginTransmission(enderecosPCF8574[pino / 8]);    
+    Wire.write(estadoPin[pino / 8]);                            
+    Wire.endTransmission();        
+}
+bool ciRead(int pino) {
+  byte lido;
+  bool estado;
+   Wire.requestFrom(enderecosPCF8574[pino / 8], 1);
+   if(Wire.available()) {   
+      lido = Wire.read();        
+   }
+   estado = bitRead(lido, pino % 8);
+   return estado;  
 }
 #endif

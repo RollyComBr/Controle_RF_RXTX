@@ -522,9 +522,9 @@ void dispositivo_RX() {
         }
       }
       if (selectAtivado.Triangulo) {
-        ciWrite(1, LOW);
+        ciWrite(0, LOW);
       } else {
-        ciWrite(1, HIGH);
+        ciWrite(0, HIGH);
       }
     }
 

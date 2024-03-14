@@ -399,14 +399,8 @@ void loop() {
     if (radio.available()) {
       radio.read(&joystick, sizeof(joystick));
 
-      if(joystick.Select){
-        if(millis() - lastTimeButtonTime.Triangulo >= debounceBotao){
-          lastTimeButtonTime.Triangulo = millis();
-          receptor.Select= !receptor.Select;
-        }
-      }
       //Funções do MODO SELECT
-      if(!receptor.Select){ //Quando SELECT está desativado executa funções comum do carrinho
+      if(!joystick.Select){ //Quando SELECT está desativado executa funções comum do carrinho
         if (joystick.Quadrado) {
           buzina();
         } else {

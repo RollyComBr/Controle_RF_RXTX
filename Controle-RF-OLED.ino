@@ -58,9 +58,6 @@ unsigned long LastTimeVibra = millis();
   byte PinMotorIN3 = 3;
   byte PinMotorIN4 = 4;
 
-  byte PinMotorIN5 = 1;
-  byte PinMotorIN6 = 8;
-
   int marchaAtual = 1;
   int velocidadeMotor;
 
@@ -196,9 +193,6 @@ void setup() {
     pinMode(PinMotorIN2, OUTPUT);
     pinMode(PinMotorIN3, OUTPUT);
     pinMode(PinMotorIN4, OUTPUT);
-
-    pinMode(PinMotorIN5, OUTPUT);
-    pinMode(PinMotorIN6, OUTPUT);
     
     pinMode(PinFarol, OUTPUT);
     pinMode(PinSetaE, OUTPUT);
@@ -541,22 +535,12 @@ void loop() {
       if (joystick.LY > 20) { //FRENTE
         analogWrite(PinMotorIN1, velocidadeMotor);
         analogWrite(PinMotorIN2, LOW);
-        if(receptor.Xis){
-          analogWrite(PinMotorIN5, velocidadeMotor);
-          analogWrite(PinMotorIN6, LOW);
-        }
       } else if(joystick.LY < -20){ //RÉ
         analogWrite(PinMotorIN1, LOW);
         analogWrite(PinMotorIN2, velocidadeMotor);
-        if(receptor.Xis){
-          analogWrite(PinMotorIN5, LOW);
-          analogWrite(PinMotorIN6, velocidadeMotor);
-        }
       }else{
         digitalWrite(PinMotorIN1, LOW);
         digitalWrite(PinMotorIN2, LOW);
-        digitalWrite(PinMotorIN5, LOW);
-        digitalWrite(PinMotorIN6, LOW);
       }
 
       //SENTIDO
